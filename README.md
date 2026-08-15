@@ -31,7 +31,9 @@ This project lets an ESP32 act as an intelligent power switch and status monitor
 | Momentary Switch | Physical case power button wired to the ESP32. |
 | 1kΩ resistor (optional) | Series resistor between TPMS1 pin 9 and GPIO 6 for protection. |
 
-### Wiring
+### Wiring Quick Reference
+
+For a complete step-by-step wiring guide with diagrams and a troubleshooting table, see **[WIRING.md](./WIRING.md)**.
 
 | ESP32 Pin | Connection | Function |
 |-----------|------------|----------|
@@ -133,6 +135,7 @@ The built-in RGB LED shows the current state:
 BC-250-ATX-Power-Controller/
 ├── platformio.ini              # Board target, flash/PSRAM config, library deps
 ├── add-platformio-to-path.ps1  # Windows helper to add pio to PATH
+├── WIRING.md                   # Detailed wiring guide with diagrams
 ├── src/
 │   └── main.cpp                # Firmware source code
 ├── .gitignore                  # PlatformIO build artifacts
