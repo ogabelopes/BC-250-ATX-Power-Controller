@@ -3,7 +3,8 @@
 This guide shows how to wire the ESP32-S3, relay, BC-250 TPMS1 header, case button, and ATX power supply together.
 
 > **Board used in this guide:** ESP32-S3-DevKitC-1 (ESP32-S3-WROOM-1 module)  
-> **Target motherboard:** AMD BC-250
+> **Target motherboard:** AMD BC-250  
+> **Important:** ESP32-S3-DevKitC-1 has two revisions. The built-in RGB LED is on **GPIO 48** on v1.0 and **GPIO 38** on v1.1. The firmware defaults to GPIO 48; change `NEOPIXEL_PIN` in `src/main.cpp` if your board is v1.1.
 
 ---
 
@@ -11,7 +12,7 @@ This guide shows how to wire the ESP32-S3, relay, BC-250 TPMS1 header, case butt
 
 | Quantity | Part | Notes |
 |----------|------|-------|
-| 1 | ESP32-S3 dev board | DevKitC-1 or similar with GPIO 0, 2, 4, 5, 6, 48 accessible. |
+| 1 | ESP32-S3 dev board | DevKitC-1 or similar with GPIO 0, 2, 4, 5, 6 accessible. Built-in RGB LED is GPIO 48 (v1.0) or GPIO 38 (v1.1). |
 | 1 | 1-channel 3.3V relay module | **Low-level trigger** (energizes on LOW). |
 | 1 | Momentary switch / button | For the smart case power button. |
 | ~ | Dupont jumper wires | Female-to-male and male-to-male as needed. |
@@ -30,7 +31,7 @@ This guide shows how to wire the ESP32-S3, relay, BC-250 TPMS1 header, case butt
 | **GPIO 4** | Case button | Input | Active-low; internal pull-up enabled. |
 | **GPIO 0** | BOOT button | Input | Onboard button; active-low; internal pull-up. |
 | **GPIO 2** | External status LED | Output | Optional; mirrors power state. |
-| **GPIO 48** | RGB LED | Output | Built-in WS2812 status LED. |
+| **GPIO 48 / 38** | RGB LED | Output | Built-in WS2812 status LED. GPIO 48 on DevKitC-1 v1.0, GPIO 38 on v1.1. |
 | **3.3V** | Power rail | — | Powers relay logic side. |
 | **GND** | Ground | — | Common ground reference. |
 | **5V / VIN** | Power input | — | From ATX 5VSB (purple wire). |
@@ -138,7 +139,7 @@ ESP32 GPIO 2  ──[220Ω]──► LED anode
 LED cathode  ───────────► GND
 ```
 
-This LED mirrors the power state (on when BC-250 is on, off when off). The built-in RGB LED on GPIO 48 already provides richer status feedback.
+This LED mirrors the power state (on when BC-250 is on, off when off). The built-in RGB LED (GPIO 48 on DevKitC-1 v1.0, GPIO 38 on v1.1) already provides richer status feedback.
 
 ---
 
@@ -161,8 +162,11 @@ This LED mirrors the power state (on when BC-250 is on, off when off). The built
    Case button ──────────────►│ GPIO 4 ─────┬── GND         │
    BOOT button ──────────────►│ GPIO 0      │               │
                               │ GPIO 2 ──[R]── LED ── GND   │
-                              │ GPIO 48 ──► RGB LED (onboard)│
+                              │ GPIO 48/38 ──► RGB LED (onboard)*│
                               └─────────────────────────────┘
+
+* DevKitC-1 v1.0 uses GPIO 48; v1.1 uses GPIO 38. Change `NEOPIXEL_PIN` in
+  `src/main.cpp` to match your board revision.
 
    Relay COM ◄──── ATX PS_ON (green)
    Relay NO  ◄──── ATX GND (black)
@@ -242,7 +246,10 @@ Initialization complete. Waiting for inputs...
 **If this does not happen:**
 - Verify the ESP32 is powered from 5VSB (purple wire must have 5V).
 - Check that `platformio.ini` has the USB CDC flags and that the Serial Monitor is open at 115200 baud.
-- If the RGB LED does nothing, your board may not have an LED on GPIO 48; the code still works.
+- If the RGB LED does nothing, check your DevKitC-1 revision:
+  - v1.0 (initial release) uses GPIO 48 for the RGB LED.
+  - v1.1 uses GPIO 38.
+  - Update `#define NEOPIXEL_PIN` in `src/main.cpp` to match your board. The rest of the firmware still works.
 
 ---
 
