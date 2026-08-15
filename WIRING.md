@@ -184,6 +184,23 @@ This LED mirrors the power state (on when BC-250 is on, off when off). The built
 
 ---
 
+## Button Behavior Quick Reference
+
+Both the **case button (GPIO 4)** and the **BOOT button (GPIO 0)** behave the same way.
+
+| Gesture | BC-250 state | Serial output | RGB LED | Relay action |
+|---------|--------------|---------------|---------|--------------|
+| Short press (< 1.2 s) | OFF | `Short press: Waking the BC-250...` | Blue → Green | 800 ms wake pulse |
+| Short press (< 1.2 s) | ON | `Short press: Normal graceful shutdown...` | Yellow → Red | 500 ms shutdown pulse |
+| Long press (> 3 s) | ON | `Long press: Initiating Hard Shutdown...` | Magenta → Red | 5.5 s hard shutdown hold |
+| Long press (> 3 s) | OFF | (ignored) | Stays red | No action |
+
+After every relay action, a **5-second cooldown** is enforced. Button presses during cooldown print `Button ignored: Cooldown active.`
+
+> **Tip:** If a long press triggers a short-press action instead, you released the button before the 3-second threshold.
+
+---
+
 ## Safety Checklist
 
 - [ ] Relay module is **low-level trigger** (energizes when `IN` is LOW).
