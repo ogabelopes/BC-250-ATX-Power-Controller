@@ -32,7 +32,8 @@
  *              NOTE: GPIO 0 is a strapping pin. Do not hold it during power-on,
  *              or the ESP32 will enter download mode instead of running this sketch.
  * - GPIO 2 -> Optional external status LED (also mirrors the power state).
- * - GPIO 48 -> Built-in RGB status LED (WS2812 / NeoPixel).
+ * - GPIO 48/38 -> Built-in RGB status LED (WS2812 / NeoPixel).
+ *              NOTE: DevKitC-1 v1.0 uses GPIO48; DevKitC-1 v1.1 uses GPIO38.
  * 
  * USAGE (Serial Monitor @ 115200 baud or Physical Button):
  * - Send 'w' : Trigger relay for 800ms (Wake).
@@ -56,7 +57,12 @@
 // ---------------------------------------------------------
 // HARDWARE PINS
 // ---------------------------------------------------------
-// The RGB status LED lives on GPIO 48 (WS2812) of the ESP32-S3-DevKitC-1.
+// The RGB status LED on the ESP32-S3-DevKitC-1 is a WS2812 (NeoPixel).
+// Board revision note:
+//   - ESP32-S3-DevKitC-1 v1.0 (initial release) -> GPIO 48
+//   - ESP32-S3-DevKitC-1 v1.1                   -> GPIO 38
+// If the built-in RGB LED does not light up during the self-test, change
+// NEOPIXEL_PIN to the correct value for your board revision.
 #define NEOPIXEL_PIN     48   // Built-in RGB LED (WS2812 / NeoPixel)
 #define NEOPIXEL_COUNT   1    // Only one LED on the devkit
 
