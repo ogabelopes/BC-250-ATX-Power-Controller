@@ -42,10 +42,12 @@ For a complete step-by-step wiring guide with diagrams and a troubleshooting tab
 | **GPIO 4** | Case button (to GND) | Smart power button. |
 | **GPIO 0** | BOOT button | Secondary test input (don't hold at power-on). |
 | **GPIO 2** | Optional external LED | Mirrors power state. |
-| **GPIO 48** | Built-in WS2812 RGB LED | Status indicator. |
+| **GPIO 48 / 38** | Built-in WS2812 RGB LED | Status indicator. See board-revision note below. |
 | **3.3V** | Relay VCC | Logic-side power for the relay. |
 | **GND** | TPMS1 GND + ATX GND | Common ground. |
 | **5VSB (purple)** | ESP32 VIN / 5V | Keeps the ESP32 alive in standby. |
+
+> **Board-revision note:** ESP32-S3-DevKitC-1 has two revisions. The built-in RGB LED is on **GPIO 48** on v1.0 and **GPIO 38** on v1.1. The firmware defaults to GPIO 48; change `NEOPIXEL_PIN` in `src/main.cpp` if your board is v1.1.
 
 **Relay side:**
 - Relay `COM` → ATX `PS_ON` (green wire)
@@ -149,6 +151,7 @@ BC-250-ATX-Power-Controller/
 - **Relay polarity:** the code assumes a **low-level trigger** relay. If your relay is high-level trigger, invert the `HIGH`/`LOW` writes in `src/main.cpp`.
 - **HOST_ON polarity:** the code assumes TPMS1 pin 9 is **HIGH** when the BC-250 is powered on. If you wire it differently, change `isPCisOn = (digitalRead(HOST_ON_PIN) == HIGH);` accordingly.
 - **GPIO 0 warning:** GPIO 0 is a strapping pin. Holding it low during power-on will put the ESP32 into download mode instead of running this sketch.
+- **RGB LED pin:** ESP32-S3-DevKitC-1 v1.0 uses GPIO 48; v1.1 uses GPIO 38. Update `NEOPIXEL_PIN` in `src/main.cpp` if the built-in RGB LED does not light up.
 - **USB Serial:** `platformio.ini` enables USB CDC on boot so the Serial Monitor works through the USB-C port.
 
 ---
