@@ -117,6 +117,48 @@ Both the **case button (GPIO 4)** and the **BOOT button (GPIO 0)** work the same
 
 A 5-second cooldown protects the PSU from rapid toggling.
 
+#### Expected behavior — short press
+
+**When the BC-250 is OFF:**
+
+```text
+Short press: Waking the BC-250...
+Action: Waking up the ATX Power Supply...
+Status: BC-250 has powered ON.
+```
+
+- RGB LED turns **blue** during the 800 ms relay pulse.
+- Relay clicks.
+- RGB LED turns **green** once the BC-250 boots.
+
+**When the BC-250 is ON:**
+
+```text
+Short press: Normal graceful shutdown...
+Action: Initiating normal shutdown (short relay pulse)...
+Status: BC-250 has powered OFF.
+```
+
+- RGB LED turns **yellow** during the 500 ms relay pulse.
+- Relay clicks.
+- RGB LED turns **red** once the BC-250 shuts down.
+
+#### Expected behavior — long press
+
+**When the BC-250 is ON** (hold the button for more than 3 seconds):
+
+```text
+Long press: Initiating Hard Shutdown...
+Action: Initiating hard shutdown (5.5s relay hold)...
+Status: BC-250 has powered OFF.
+```
+
+- RGB LED turns **magenta** during the 5.5 s relay hold.
+- Relay stays closed for 5.5 seconds.
+- RGB LED turns **red** once the BC-250 powers off.
+
+> **Note:** Long press is ignored when the BC-250 is already OFF. If a short press triggers instead, you released the button before the 3-second threshold.
+
 ### Status LED Colors
 
 The built-in RGB LED shows the current state:
