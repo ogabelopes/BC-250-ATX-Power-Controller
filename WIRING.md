@@ -202,6 +202,203 @@ This LED mirrors the power state (on when BC-250 is on, off when off). The built
 
 ---
 
+## Testing & Verification
+
+After wiring everything and flashing the firmware, follow these steps to verify every part works correctly.
+
+### Before powering on
+
+1. **Double-check polarities**
+   - Relay `VCC` → ESP32 3.3V, `GND` → ESP32 GND, `IN` → GPIO 5.
+   - Relay `COM` → ATX `PS_ON` (green), `NO` → ATX GND (black).
+   - TPMS1 pin 9 → GPIO 6 (with optional 1kΩ), TPMS1 GND → ESP32 GND.
+   - ATX 5VSB (purple) → ESP32 5V/VIN, ATX GND → ESP32 GND.
+
+2. **Make sure the BC-250 can boot on its own**
+   - Manually bridge ATX `PS_ON` to GND and confirm the BC-250 starts.
+   - If it does not, fix the PSU/motherboard first before blaming the controller.
+
+3. **Open the Serial Monitor**
+   ```bash
+   pio device monitor -b 115200
+   ```
+
+---
+
+### Test 1 — Boot and RGB self-test
+
+**Expected behavior:**
+
+```text
+BC-250 Hardware Logic Test Initializing...
+NeoPixel self-test...
+Initialization complete. Waiting for inputs...
+```
+
+- The built-in RGB LED flashes **red → green → blue** for 200 ms each.
+- After the self-test, the LED turns **red** if the BC-250 is off, or **green** if it is already on.
+- The external LED on GPIO 2 mirrors the same state (on = green/off, off = red/off).
+
+**If this does not happen:**
+- Verify the ESP32 is powered from 5VSB (purple wire must have 5V).
+- Check that `platformio.ini` has the USB CDC flags and that the Serial Monitor is open at 115200 baud.
+- If the RGB LED does nothing, your board may not have an LED on GPIO 48; the code still works.
+
+---
+
+### Test 2 — Wake via Serial command
+
+1. Make sure the BC-250 is off (RGB LED red).
+2. In the Serial Monitor, type `w` and press Enter.
+
+**Expected behavior:**
+
+```text
+Serial command received! Flagging ATX power sequence.
+Action: Waking up the ATX Power Supply...
+```
+
+- You should hear/feel the relay click.
+- The RGB LED turns **blue** during the 800 ms wake pulse.
+- After the pulse, the LED returns to **red** briefly, then turns **green** once the BC-250 boots and TPMS1 pin 9 goes HIGH.
+- Serial prints: `Status: BC-250 has powered ON.`
+
+**If this does not happen:**
+- Verify the relay is **low-level trigger** (energizes when GPIO 5 is LOW).
+- Swap relay `COM`/`NO` if the PSU does not turn on during the click.
+- Check that ATX `PS_ON` is actually connected to relay `COM` and GND to `NO`.
+
+---
+
+### Test 3 — Graceful shutdown via Serial command
+
+1. Wait until the BC-250 is fully on (RGB LED green).
+2. In the Serial Monitor, type `h`.
+
+**Expected behavior:**
+
+```text
+WARNING: Initiating Hard Shutdown (Holding relay for 5.5s)...
+Action: Initiating hard shutdown (5.5s relay hold)...
+```
+
+- The relay holds closed for 5.5 seconds.
+- The RGB LED turns **magenta** during the hard shutdown.
+- After 5.5 seconds the relay releases.
+- Once the BC-250 powers off, TPMS1 pin 9 drops to 0V and the LED turns **red**.
+- Serial prints: `Status: BC-250 has powered OFF.`
+
+> Note: the `h` command performs a **hard shutdown**. If you want to test a normal graceful shutdown, use the case button short-press (Test 4).
+
+---
+
+### Test 4 — Case button short press
+
+1. Make sure the BC-250 is off and the 5-second cooldown has passed (RGB LED red).
+2. Press and release the case button quickly (< 1.2 seconds).
+
+**Expected behavior when off:**
+
+```text
+Short press: Waking the BC-250...
+Action: Waking up the ATX Power Supply...
+```
+
+- Same as Test 2: relay clicks, LED blue, then green when the board boots.
+
+**Expected behavior when on:**
+
+```text
+Short press: Normal graceful shutdown...
+Action: Initiating normal shutdown (short relay pulse)...
+```
+
+- Relay clicks for 500 ms.
+- LED turns **yellow** during the pulse.
+- The BC-250 should begin a graceful OS shutdown (if an OS is running).
+
+**If the button does nothing:**
+- Wait at least 5 seconds after the last relay action (cooldown).
+- Verify the button is wired between GPIO 4 and GND.
+- Check the Serial Monitor for `Button ignored: Cooldown active.`
+
+---
+
+### Test 5 — Case button long press (hard shutdown)
+
+1. Make sure the BC-250 is on (RGB LED green).
+2. Press and hold the case button for more than 3 seconds, then release.
+
+**Expected behavior:**
+
+```text
+Long press: Initiating Hard Shutdown...
+Action: Initiating hard shutdown (5.5s relay hold)...
+```
+
+- The relay holds closed for 5.5 seconds.
+- LED turns **magenta**.
+- After release, the BC-250 powers off and the LED turns **red**.
+
+**If a short press triggers instead:**
+- You released the button before 3 seconds. Hold it longer.
+
+---
+
+### Test 6 — Onboard BOOT button
+
+The BOOT button (GPIO 0) behaves exactly like the case button:
+
+- Short press when off → wake.
+- Short press when on → graceful shutdown.
+- Long press (> 3 s) when on → hard shutdown.
+
+**Important:** do not hold GPIO 0 at power-on, or the ESP32 enters download mode instead of running the sketch.
+
+---
+
+### Test 7 — State synchronization
+
+1. Power on the BC-250 manually (bridge PS_ON to GND directly).
+2. Power on or reset the ESP32 while the BC-250 is already running.
+
+**Expected behavior:**
+
+- The ESP32 boots, runs the RGB self-test, then immediately turns the LED **green**.
+- It does **not** print `Status: BC-250 has powered ON.` because it correctly detects the board was already on.
+
+This confirms the state-synchronization logic at boot works.
+
+---
+
+### Test 8 — Cooldown protection
+
+1. Trigger any action (e.g., wake with `w`).
+2. Immediately try to trigger another action within 5 seconds.
+
+**Expected behavior:**
+
+- Serial commands sent during cooldown are silently ignored.
+- Button presses during cooldown print: `Button ignored: Cooldown active.`
+- After 5 seconds, new commands/button presses work again.
+
+This protects the power supply from rapid toggling.
+
+---
+
+## Quick Reference: What Each LED Color Means
+
+| Color | Meaning |
+|-------|---------|
+| Red | BC-250 OFF / standby |
+| Green | BC-250 ON |
+| Blue | Wake pulse in progress |
+| Yellow | Normal shutdown pulse in progress |
+| Magenta | Hard shutdown in progress |
+| Red → Green → Blue flash | RGB self-test at boot |
+
+---
+
 ## References
 
 - [BC-250 Pinouts (elektricM/amd-bc250-docs)](https://elektricm.github.io/amd-bc250-docs/hardware/pinouts/)
