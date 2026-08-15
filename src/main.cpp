@@ -11,22 +11,22 @@
  *
  * PURPOSE:
  * 1. Control an ATX power supply by bridging the PS_ON pin to Ground via a 3.3V relay.
- * 2. Safely sense if the BC-250 is running by reading its HOST_ON signal via a PC817 optocoupler.
+ * 2. Safely sense if the BC-250 is running by reading the 3.3V rail from the TPMS1 LPC header.
  * 3. Provide safe startup (short press) and hard shutdown (long press) logic.
  * 4. Intercept the physical case power button for "Smart" triggering.
  * 
  * HARDWARE REQUIRED:
  * - ESP32 Microcontroller (ESP32-S3, C3, or classic WROOM)
  * - 1-Channel 3.3V Relay Module (Crucial: Must trigger on 3.3V logic, not 5V)
- * - PC817 Optocoupler Module (To safely isolate and step down the BC-250 power signal)
  * - Standard ATX Power Supply (Providing 24-pin power and 5VSB standby power)
  * - AMD BC-250 Motherboard (or similar board requiring soft-power emulation)
  * - Momentary Switch (Wired to ESP32 for smart control)
+ * - 1kΩ resistor (optional but recommended, between TPMS1 pin 9 and GPIO 6)
  * 
  * HARDWARE CONFIGURATION:
  * - ESP32 powered via the ATX "Purple Wire" (5VSB) and Ground.
  * - GPIO 5 -> IN pin on 3.3V Relay Module (Switches ATX Green PS_ON wire).
- * - GPIO 6 -> OUT pin on PC817 Optocoupler (Reads BC-250 HOST_ON 3.3V signal).
+ * - GPIO 6 -> TPMS1 pin 9 (3.3V rail, active-high board-power signal).
  * - GPIO 4 -> Physical Case Button (Smart switch trigger, active-low w/ pull-up).
  * - GPIO 0 -> Onboard BOOT button (secondary test input, active-low w/ pull-up).
  *              NOTE: GPIO 0 is a strapping pin. Do not hold it during power-on,
@@ -65,7 +65,7 @@
 // for driving our external hardware. GPIO 0 is the BOOT/strapping pin; we only
 // use it as a runtime input after boot has completed.
 const int RELAY_PIN = 5;         // Controls the 3.3V Relay Module. Active-Low: LOW energizes the relay.
-const int OPTOCOUPLER_PIN = 6;   // Reads the PC817 Optocoupler. Uses the ESP32 internal pull-up resistor.
+const int HOST_ON_PIN = 6;       // Reads TPMS1 pin 9 (BC-250 3.3V rail, HIGH = board powered on).
 const int EXTERNAL_BTN_PIN = 4;  // The physical case power button (the "Smart" trigger).
 const int STATUS_LED_PIN = 2;    // Optional external LED (e.g. wired to GPIO 2).
 const int BOOT_BUTTON_PIN = 0;   // The physical "BOOT" button on the ESP32. Secondary test input.
@@ -155,11 +155,11 @@ void setup() {
     pinMode(RELAY_PIN, OUTPUT);
     digitalWrite(RELAY_PIN, HIGH); 
 
-    // --- Optocoupler Configuration ---
-    // We configure the pin as INPUT_PULLUP. This connects an internal resistor to 3.3V.
-    // When the PC is OFF, the optocoupler is open, and the pin reads HIGH (3.3V).
-    // When the PC is ON, the optocoupler closes, connecting this pin to GND, making it read LOW (0V).
-    pinMode(OPTOCOUPLER_PIN, INPUT_PULLUP);
+    // --- HOST_ON / TPMS1 Configuration ---
+    // TPMS1 pin 9 carries the BC-250's 3.3V rail, so it reads HIGH when the board is on
+    // and LOW when it is off. The BC-250 actively drives this pin, so we use a plain INPUT.
+    // A 1kΩ series resistor between TPMS1 pin 9 and this GPIO is recommended for protection.
+    pinMode(HOST_ON_PIN, INPUT);
 
     // --- Button Configuration ---
     // Both buttons connect to Ground when pressed, so we use the internal pull-ups.
@@ -183,8 +183,8 @@ void setup() {
     // Check the PC's state right as the ESP32 boots up. 
     // This prevents the ESP32 from thinking the state "changed" if the PC is
     // already running when we plug the ESP32 in.
-    int initialState = digitalRead(OPTOCOUPLER_PIN);
-    isPCisOn = (initialState == LOW);
+    int initialState = digitalRead(HOST_ON_PIN);
+    isPCisOn = (initialState == HIGH);
     wasPCisOnLastCheck = isPCisOn;
     digitalWrite(STATUS_LED_PIN, isPCisOn ? HIGH : LOW); // External LED reflects state
     updateNeoPixel(); // RGB LED reflects state
@@ -197,11 +197,11 @@ void setup() {
 // ---------------------------------------------------------
 void loop() {
     // =========================================================
-    // 1. POLL THE OPTOCOUPLER
+    // 1. POLL HOST_ON / TPMS1
     // =========================================================
-    // Continuously read the BC-250's HOST_ON signal so the state
+    // Continuously read the BC-250's TPMS1 3.3V rail signal so the state
     // tracking below reflects real power changes as they happen.
-    isPCisOn = (digitalRead(OPTOCOUPLER_PIN) == LOW);
+    isPCisOn = (digitalRead(HOST_ON_PIN) == HIGH);
 
     // =========================================================
     // 1B. DETECT STATE CHANGES
