@@ -178,7 +178,6 @@ The built-in RGB LED shows the current state:
 ```
 BC-250-ATX-Power-Controller/
 ├── platformio.ini              # Board target, flash/PSRAM config, library deps
-├── add-platformio-to-path.ps1  # Windows helper to add pio to PATH
 ├── WIRING.md                   # Detailed wiring guide with diagrams
 ├── src/
 │   └── main.cpp                # Firmware source code
